@@ -88,11 +88,20 @@ class PDFTool:
             self.log(f"添加: {os.path.basename(path)} -> {day}号")
 
     def extract_day_from_filename(self, filename):
-        """从文件名提取日期数字，如 '18号单1.pdf' -> 18"""
+        """从文件名提取日期数字
+        支持格式:
+        - '18号单1.pdf' -> 18 (匹配"号"前面的数字)
+        - '1-单1-发货单.pdf' -> 1 (匹配开头数字，遇到"-"停止)
+        """
+        # 首先尝试匹配 "X号" 格式 (如 "10号单1.pdf")
         match = re.search(r'(\d+)号', filename)
         if match:
             return int(match.group(1))
-        # 如果没有"号"，尝试提取开头的数字
+        # 匹配开头数字（遇到-或非数字字符停止），如 "1-单1-发货单.pdf" -> 1
+        match = re.search(r'^(\d+)(?:-|$)', filename)
+        if match:
+            return int(match.group(1))
+        # 最后的备选：直接匹配开头的数字
         match = re.search(r'^(\d+)', filename)
         if match:
             return int(match.group(1))
@@ -145,15 +154,20 @@ class PDFTool:
         return data_list
 
     def find_column_for_date(self, ws, day):
-        """根据日期找到对应的Excel列"""
+        """根据日期(几号)找到对应的Excel列
+        从Excel所有日期列中，找到"几号"匹配的文件名数字
+        支持跨月表格（如4月20日-5月18日）
+        """
         base = datetime(1899, 12, 30)
-        target_date = datetime(2026, 4, day)
-        target_excel = (target_date - base).days
 
         for col in range(4, ws.max_column + 1):
             val = ws.cell(row=1, column=col).value
-            if val == target_excel:
-                return col
+            if val and isinstance(val, (int, float)):
+                # Excel序列号转日期
+                actual_date = base + timedelta(days=int(val))
+                # 只比较"几号"，不比较月份
+                if actual_date.day == day:
+                    return col
         return None
 
     def process(self):
