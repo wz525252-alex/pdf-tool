@@ -235,18 +235,27 @@ class PDFTool:
 
                 # 填写数据
                 matched = 0
+                matched_qty = 0
+                unmatched_items = []
                 for (product, size), qty in merged_data.items():
                     key = (product, size)
                     if key in excel_products:
                         row_num = excel_products[key]
                         ws.cell(row=row_num, column=target_col).value = qty
                         matched += 1
+                        matched_qty += qty
+                    else:
+                        unmatched_items.append((product, size, qty))
 
                 self.log(f"  合并: {len(merged_data)}条, {sum(merged_data.values())}件")
-                self.log(f"  匹配: {matched}条 -> 第{target_col}列")
+                self.log(f"  匹配: {matched}条, {matched_qty}件 -> 第{target_col}列")
+                if unmatched_items:
+                    self.log(f"  未匹配: {len(unmatched_items)}条, {sum(q for _, _, q in unmatched_items)}件")
+                    for product, size, qty in unmatched_items:
+                        self.log(f"    {product}, {size}, {qty}件")
 
-                total_records += len(merged_data)
-                total_qty += sum(merged_data.values())
+                total_records += matched
+                total_qty += matched_qty
                 processed_files.extend(pdf_paths)
 
             # 保存
