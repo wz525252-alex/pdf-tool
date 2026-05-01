@@ -195,13 +195,13 @@ class PDFTool:
             wb = openpyxl.load_workbook(self.excel_path.get())
             ws = wb['Sheet1']
 
-            # 建立Excel商品索引
-            excel_products = {}
+            # 建立Excel商品索引（支持重复行）
+            excel_products = defaultdict(list)
             for row_num in range(2, ws.max_row + 1):
                 product = ws.cell(row=row_num, column=2).value
                 size = ws.cell(row=row_num, column=3).value
                 if product and size:
-                    excel_products[(product, size)] = row_num
+                    excel_products[(product, size)].append(row_num)
 
             total_records = 0
             total_qty = 0
@@ -233,15 +233,15 @@ class PDFTool:
                 for row_num in range(2, ws.max_row + 1):
                     ws.cell(row=row_num, column=target_col).value = None
 
-                # 填写数据
+                # 填写数据（写入所有匹配的行）
                 matched = 0
                 matched_qty = 0
                 unmatched_items = []
                 for (product, size), qty in merged_data.items():
                     key = (product, size)
                     if key in excel_products:
-                        row_num = excel_products[key]
-                        ws.cell(row=row_num, column=target_col).value = qty
+                        for row_num in excel_products[key]:
+                            ws.cell(row=row_num, column=target_col).value = qty
                         matched += 1
                         matched_qty += qty
                     else:
