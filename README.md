@@ -80,7 +80,16 @@ python process.py 10 10号单1.pdf 10号单2.pdf
 pip install pdfplumber openpyxl -i https://pypi.tuna.tsinghua.edu.cn/simple
 ```
 
-### 打包为exe（Windows）
+### 下载 exe 文件（Windows）
+
+直接从 GitHub Release 下载，无需安装 Python 环境：
+
+1. 访问 **https://github.com/wz525252-alex/pdf-tool/releases**
+2. 点击最新版本（如 `v1.0.2`）
+3. 在 "Assets" 区域下载 `PDF订单统计工具.exe`
+4. 双击运行即可
+
+### 手动打包为 exe（可选）
 ```bash
 pip install pyinstaller
 pyinstaller --onefile --windowed pdf_tool.py
@@ -90,6 +99,21 @@ pyinstaller --onefile --windowed pdf_tool.py
 ---
 
 ## 三、更新记录
+
+### 2026-05-01 Bug 修复 & GitHub Actions 自动发布
+
+**问题**：程序无法识别文件名对应的日期。文件名格式如 `1-单1-发货单.pdf`，需要解析第一个 `-` 前面的数字作为日期号。
+
+**原因**：`pdf_tool.py` 缺少 `timedelta` 导入，导致 `find_column_for_date` 方法运行报错。
+
+**修复**：
+- 添加 `from datetime import datetime, timedelta`
+- 文件名解析逻辑本身正确，已支持 `1-单1-发货单.pdf` 格式
+
+**自动打包**：
+- 配置 GitHub Actions 自动构建 exe 并发布到 Release
+- 推送 tag（如 `v1.0.2`）后自动触发构建
+- 构建完成后可在 Release 页面下载 exe
 
 ### 2025-04-30 文件名格式扩展
 
