@@ -219,9 +219,13 @@ class PDFTool:
                     self.log(f"  {os.path.basename(pdf_path)}: {len(data)}条, {qty}件")
                     all_data.extend(data)
 
+                # PDF中同一商品+尺码的数量相加
                 merged_data = defaultdict(int)
                 for item in all_data:
                     merged_data[(item['product'], item['size'])] += item['qty']
+
+                pdf_total_qty = sum(merged_data.values())
+                self.log(f"  PDF合并: {len(merged_data)}条, {pdf_total_qty}件")
 
                 # 找到目标列
                 target_col = self.find_column_for_date(ws, day)
@@ -247,12 +251,39 @@ class PDFTool:
                     else:
                         unmatched_items.append((product, size, qty))
 
-                self.log(f"  合并: {len(merged_data)}条, {sum(merged_data.values())}件")
-                self.log(f"  匹配: {matched}条, {matched_qty}件 -> 第{target_col}列")
+                self.log(f"  写入: {matched}条, {matched_qty}件 -> 第{target_col}列")
                 if unmatched_items:
                     self.log(f"  未匹配: {len(unmatched_items)}条, {sum(q for _, _, q in unmatched_items)}件")
                     for product, size, qty in unmatched_items:
                         self.log(f"    {product}, {size}, {qty}件")
+
+                # 从Excel重新统计验证
+                excel_total_qty = 0
+                for row_num in range(2, ws.max_row + 1):
+                    val = ws.cell(row=row_num, column=target_col).value
+                    if val and isinstance(val, (int, float)):
+                        excel_total_qty += int(val)
+
+                self.log(f"  Excel统计: {excel_total_qty}件")
+
+                # 验证数量是否一致
+                if excel_total_qty != matched_qty:
+                    self.log(f"  ⚠️ 警告: 数量不一致! PDF={matched_qty}, Excel={excel_total_qty}")
+                    self.log(f"  差异: {excel_total_qty - matched_qty}件")
+                    # 检查是否有重复行
+                    duplicate_check = defaultdict(int)
+                    for row_num in range(2, ws.max_row + 1):
+                        product = ws.cell(row=row_num, column=2).value
+                        size = ws.cell(row=row_num, column=3).value
+                        if product and size:
+                            duplicate_check[(product, size)] += 1
+                    duplicates = {k: v for k, v in duplicate_check.items() if v > 1}
+                    if duplicates:
+                        self.log(f"  发现Excel重复行:")
+                        for (product, size), count in duplicates.items():
+                            self.log(f"    {product}, {size} 出现{count}次")
+                else:
+                    self.log(f"  ✓ 验证通过")
 
                 total_records += matched
                 total_qty += matched_qty
